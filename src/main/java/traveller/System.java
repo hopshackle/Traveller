@@ -22,6 +22,15 @@ public class System {
     public int getId() {
         return id;
     }
+    public String getName() {
+        return name;
+    }
+    public Point getLocation() {
+        return location;
+    }
+    public String getSector() {
+        return sector;
+    }
 
     public static void setDbLink(MySQLLink dbLink) {
         System.dbLink = dbLink;
@@ -93,7 +102,7 @@ public class System {
 
     @Override
     public int hashCode() {
-        return id;
+        return id + 8675309;
     }
 
     @Override
