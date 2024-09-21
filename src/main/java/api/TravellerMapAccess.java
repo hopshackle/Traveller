@@ -13,17 +13,18 @@ public class TravellerMapAccess {
         // returns JSON array of systems
         // e.g. [{"name": "Sol", "location": [1827, 1827]}, ...]
 
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://travellermap.com/api/sec?sector=Deneb"))
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://travellermap.com/api/sec?sector=Deneb"))
+                    .header("Content-Type", "application/json")
+                    .GET()
+                    .build();
 
-        // send the request
-        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
-                .thenAccept(System.out::println)
-                .join();
+            // send the request
+            client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(HttpResponse::body)
+                    .thenAccept(System.out::println)
+                    .join();
+        }
     }
 }
