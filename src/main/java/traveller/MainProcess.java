@@ -8,7 +8,7 @@ public class MainProcess {
 
     public static void main(String[] args) {
         // run the process for 10 years
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 25; i++) {
             oneYear();
         }
     }
@@ -19,7 +19,7 @@ public class MainProcess {
         Connection connection = World.dbLink.getConnection();
         int year;
         try {
-            var result = connection.createStatement().executeQuery("SELECT MAX(Start) FROM orders");
+            var result = connection.createStatement().executeQuery("SELECT MAX(year) FROM global");
             year = result.next() ? result.getInt(1) + 1 : 0;
             result.close();
         } catch (SQLException e) {

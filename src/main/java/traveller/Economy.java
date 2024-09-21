@@ -8,6 +8,8 @@ public class Economy {
 
     static MySQLLink dbLink = new MySQLLink();
 
+    static boolean debug = true;
+
     public static void calculateBudgets(int year) {
         // we cycle through all Worlds and calculate their budgets
         // first load in the worlds from MySQL
@@ -17,21 +19,25 @@ public class Economy {
             while (result.next()) {
                 World world = new World(result.getInt("id"));
 
-                int resources = world.getAvailableResources();
+                double resources = world.getAvailableResources();
+                if (resources < 1) resources = 1.0 / (resources + 2);
+                double infrastructure = world.infrastructure;
+                if (infrastructure < 1) infrastructure = 1.0 / (infrastructure + 2);
 
-                double gwp = resources * 0.1 * world.techLevel * world.popMantissa * Math.pow(10, world.popExponent - 6) / (world.culture + 1);
+                double gwp = resources * 0.1 * infrastructure * world.techLevel * world.popMantissa * Math.pow(10, world.popExponent - 6) / (world.culture + 1);
 
-                world.budget = gwp * 0.4;
+                world.gwp = gwp;
 
-                double expenses = (world.culture * 2 + world.infrastructure) * 0.01 * world.budget;
+                double expenses = (world.culture * 2 + world.infrastructure) * 0.01 * gwp * 0.4;
 
-                world.treasury += world.budget - expenses;
+                world.treasury += gwp * 0.4 - expenses;
 
                 // then population increases by 1% per year (to be changed later)
                 world.popMantissa *= 1.01;
                 if (world.popMantissa >= 10) {
                     world.popMantissa /= 10;
                     world.popExponent++;
+                    if (debug) logMessage(year, world, "Population increases to " + world.popExponent);
                 }
 
                 world.write();
@@ -51,23 +57,26 @@ public class Economy {
             var result = connection.createStatement().executeQuery("SELECT id FROM worlds WHERE Population > 0");
             while (result.next()) {
                 World world = new World(result.getInt("id"));
-                double budget = world.budget + world.treasury;
+                double budget = Math.min(world.treasury, world.gwp);
 
                 // we then need to check to see what orders are already in progress for the world
                 var orders = connection.createStatement().executeQuery("SELECT * FROM orders WHERE World = " + world.id + " AND Status = 'IN_PROGRESS'");
-                boolean starportInProgress = false;
-                boolean infraInProgress = false;
+                boolean starportInProgress = world.techLevel < 7; // can't build starport without spacefaring tech
+                boolean infraInProgress = world.techLevel <= world.infrastructure;  // tech is limit on infra
+                boolean techInProgress = false;
                 while (orders.next()) {
                     Order order = new Order(orders.getInt("id"));
                     if (order.type == Order.OrderType.STARPORT) {
                         starportInProgress = true;
                     } else if (order.type == Order.OrderType.INFRASTRUCTURE) {
                         infraInProgress = true;
+                    } else if (order.type == Order.OrderType.RESEARCH) {
+                        techInProgress = true;
                     }
                 }
 
                 int infraTime = 2 * (world.size + atmosphericModifier(world.atmosphere));
-                double infraCost = infraTime * (world.infrastructure + 1) * 0.1;
+                double infraCost = infraTime * (world.infrastructure + 1) * 0.1 * world.popExponent;
 
                 Order order = null;
                 if (!starportInProgress && world.starport.equals("X")) {
@@ -76,9 +85,32 @@ public class Economy {
                 } else if (!starportInProgress && world.starport.equals("E") && budget >= 0.6) {
                     order = new Order(Order.OrderType.STARPORT, world.id, -1, year, year + 2, 1.2);
                     order.description = "Upgrade Starport to D";
-                } else if (!infraInProgress) {
+                } else if (!infraInProgress && budget >= infraCost / infraTime) {
                     order = new Order(Order.OrderType.INFRASTRUCTURE, world.id, -1, year, year + infraTime, infraCost);
                     order.description = "Improve Infrastructure to " + (world.infrastructure + 1);
+                } else if (!techInProgress) {
+                    double techCost = techCost(world.techLevel + 1);
+                    int techTime = techTime(world.techLevel + 1);
+                    if (world.preTech > world.techLevel + 1) {
+                        techCost /= 5.0;
+                        techTime /= 10;
+                        if (techTime < 1) techTime = 1;
+                    }
+                    if (budget >= techCost / techTime * 2) {
+                        order = new Order(Order.OrderType.RESEARCH, world.id, -1, year, year + techTime, techCost);
+                        order.description = "Research new technologies to tech level " + (world.techLevel + 1);
+                    }
+                } else if (!starportInProgress) {
+                    if (world.starport.equals("D") && budget >= 24) {
+                        order = new Order(Order.OrderType.STARPORT, world.id, -1, year, year + 10, 120);
+                        order.description = "Upgrade Starport to C";
+                    } else if (world.starport.equals("C") && budget >= 60) {
+                        order = new Order(Order.OrderType.STARPORT, world.id, -1, year, year + 20, 600);
+                        order.description = "Upgrade Starport to B";
+                    } else if (world.starport.equals("B") && budget >= 160) {
+                        order = new Order(Order.OrderType.STARPORT, world.id, -1, year, year + 30, 2400);
+                        order.description = "Upgrade Starport to A";
+                    }
                 }
                 if (order != null)
                     order.write();
@@ -86,6 +118,11 @@ public class Economy {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+
+    static void logMessage(int year, World w, String message) {
+        System.out.printf("%3d%20s%45s%n", year, w.name, message);
     }
 
     public static void progressDevelopment(int year) {
@@ -98,7 +135,7 @@ public class Economy {
                 World world = new World(order.worldId);
                 // first we pay any costs
                 double cost = order.totalCost / (order.endYear - order.startYear);
-                world.budget -= cost;
+                world.treasury -= cost;
 
                 // then we progress the order if we have reached the end year
                 if (year == order.endYear) {
@@ -107,9 +144,20 @@ public class Economy {
                             world.starport = "E";
                         } else if (world.starport.equals("E")) {
                             world.starport = "D";
+                        } else if (world.starport.equals("D")) {
+                            world.starport = "C";
+                        } else if (world.starport.equals("C")) {
+                            world.starport = "B";
+                        } else if (world.starport.equals("B")) {
+                            world.starport = "A";
                         }
+                        if (debug) logMessage(year, world, "Starport upgraded to " + world.starport);
                     } else if (order.type == Order.OrderType.INFRASTRUCTURE) {
                         world.infrastructure++;
+                        if (debug) logMessage(year, world, "Infrastructure increased to " + world.infrastructure);
+                    } else if (order.type == Order.OrderType.RESEARCH) {
+                        world.techLevel++;
+                        if (debug) logMessage(year, world, "Tech level increased to " + world.techLevel);
                     }
                     order.status = Constants.Status.COMPLETED;
                     order.write();
@@ -130,9 +178,23 @@ public class Economy {
             var result = connection.createStatement().executeQuery("SELECT id FROM worlds WHERE Population > 0");
             while (result.next()) {
                 World world = new World(result.getInt("id"));
-                world.treasury += world.budget;
+                world.treasury = Math.min(world.treasury, world.gwp); // the max we can store
+                if (world.treasury < 0.00) {
+                    world.treasury *= 1.1; // we have to pay 10% interest on debt
+                    if (world.treasury < -5 * world.gwp) {
+                        // let's call this bankruptcy
+                        world.treasury = 0.0;
+                        if (world.infrastructure > 0)
+                            world.infrastructure--;
+                        if (debug) logMessage(year, world, "Bankruptcy! Infrastructure reduced by 1");
+                    }
+                }
                 world.write();
             }
+            result.close();
+
+            // now update the year in the global table
+            connection.createStatement().executeUpdate("INSERT INTO global (year) VALUES (" + year + ")");
         } catch (Exception e) {
             e.printStackTrace();
 
@@ -149,6 +211,36 @@ public class Economy {
             case 13, 14 -> 1;
             case 15 -> 2;
             default -> 10;
+        };
+    }
+
+    public static int techTime(int newLevel) {
+        return switch (newLevel) {
+            case 1, 2 -> 1;
+            case 3 -> 300;
+            case 4 -> 150;
+            case 5, 6, 7, 8, 9, 10 -> 50;
+            case 11 -> 100;
+            case 12 -> 200;
+            case 13 -> 400;
+            default -> 500;
+        };
+    }
+
+    public static double techCost(int newLevel) {
+        return switch (newLevel) {
+            case 1, 2, 3, 4 -> 0.0;
+            case 5 -> 2;
+            case 6 -> 3;
+            case 7 -> 20.0;
+            case 8 -> 50.0;
+            case 9 -> 150.0;
+            case 10 -> 300.0;
+            case 11 -> 500.0;
+            case 12 -> 2000.0;
+            case 13 -> 2e4;
+            case 14 -> 2e5;
+            default -> newLevel * 2e6;
         };
     }
 }
