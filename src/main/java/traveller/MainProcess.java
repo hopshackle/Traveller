@@ -1,5 +1,7 @@
 package traveller;
 
+import db.JumpLinks;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -10,7 +12,7 @@ public class MainProcess {
     static int year = 0;
 
     public static void main(String[] args) {
-        int timeToRun = 10;
+        int timeToRun = 1;
 
         // first get the current year
         Connection connection = World.dbLink.getConnection();
@@ -24,6 +26,8 @@ public class MainProcess {
 
         for (int i = 0; i < timeToRun; i++) {
             oneYear();
+
+            JumpLinks.empireRelationsAndTargets();
         }
     }
 

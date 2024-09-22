@@ -14,7 +14,17 @@ public class World {
     String name;
     Hex location;
     String sector;
-    int size, popExponent, atmosphere, hydrographics, techLevel, infrastructure, baseResources, culture, preTech;
+    int size;
+    int popExponent;
+    int atmosphere;
+    int hydrographics;
+    int techLevel;
+
+
+    int infrastructure;
+    int baseResources;
+    int culture;
+    int preTech;
     int gasGiantCount, beltCount;
     int empire;
     double popMantissa, treasury, gwp;
@@ -243,5 +253,46 @@ public class World {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+
+    public int getSize() {
+        return size;
+    }
+
+    public int getPopExponent() {
+        return popExponent;
+    }
+
+    public int getAtmosphere() {
+        return atmosphere;
+    }
+
+    public int getHydrographics() {
+        return hydrographics;
+    }
+
+    public int getTechLevel() {
+        return techLevel;
+    }
+
+    public int getInfrastructure() {
+        return infrastructure;
+    }
+
+    public int getCulture() {
+        return culture;
+    }
+
+    public int getEmpire() {
+        return empire;
+    }
+
+    public int getStarportRank() {
+        return starportRank;
+    }
+
+    public String getStarport() {
+        return starport;
     }
 }

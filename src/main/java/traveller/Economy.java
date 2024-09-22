@@ -45,7 +45,6 @@ public class Economy {
         }
     }
 
-
     public static void progressDevelopment(int year, List<World> worlds) {
         // process existing orders
         Connection connection = dbLink.getConnection();
@@ -83,7 +82,7 @@ public class Economy {
 
                 // then if we have any money left, consider a new project
                 if (world.treasury > 0.0)
-                    developmentOrders(year, world, orderList);
+                    newOrders(year, world, orderList);
 
                 world.write();
             }
@@ -92,8 +91,7 @@ public class Economy {
         }
     }
 
-
-    public static void developmentOrders(int year, World world, List<Order> currentOrders) {
+    public static void newOrders(int year, World world, List<Order> currentOrders) {
         // we create new development orders, this does not update world in any way
         try {
             Connection connection = dbLink.getConnection();
@@ -184,7 +182,6 @@ public class Economy {
             e.printStackTrace();
         }
     }
-
 
     static void logMessage(int year, World w, String message) {
         System.out.printf("%3d%20s%45s%n", year, w.name, message);

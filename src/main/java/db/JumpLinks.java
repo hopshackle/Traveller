@@ -1,5 +1,6 @@
 package db;
 
+import traveller.Relation;
 import traveller.World;
 
 import java.sql.ResultSet;
@@ -22,8 +23,7 @@ public class JumpLinks {
 
         try {
             String query = "SELECT id FROM worlds";
-            ResultSet result = null;
-            result = connection.createStatement().executeQuery(query);
+            ResultSet result = connection.createStatement().executeQuery(query);
 
             // load the worlds into manageable format
             while (result.next()) {
@@ -58,5 +58,75 @@ public class JumpLinks {
                 }
             }
         }
+    }
+
+    public static void empireRelationsAndTargets() {
+        // We run through all worlds, only worrying about those with a Starport of at least D (or C?)
+        // we then check the jump technology of the Empire to which the world belongs, and check all links within range
+        // if a world is no populated, then we add it to the list of colonisable targets
+        // if a world is populated, then we add it to the list of contacted empires
+
+        List<World> worlds = World.getAllWorlds();
+        // get a connection
+        MySQLLink dbLink = new MySQLLink();
+        var connection = dbLink.getConnection();
+
+        try{
+
+            // first load in all current relations to avoid duplication
+            String query = "SELECT Empire1, Empire2 FROM relations";
+            ResultSet result = connection.createStatement().executeQuery(query);
+            Set<String> relations = new HashSet<>();
+            while (result.next()) {
+                relations.add(result.getInt("Empire1") + "-" + result.getInt("Empire2"));
+            }
+            result.close();
+
+            // then drop the colonisable table
+            query = "DELETE FROM colonisable WHERE empire > 0";
+            connection.createStatement().executeUpdate(query);
+
+            for (World w : worlds) {
+                if (w.getTechLevel() < 9) {
+                    continue;
+                }
+                // get the empire
+                int empire = w.getEmpire();
+                // get the jump technology
+                int range = w.getTechLevel() - 9;
+                if (range < 1) {
+                    range = 1;
+                }
+
+                // get the links
+                query = "SELECT toWorld FROM links WHERE fromWorld = " + w.getId() + " AND distance <= " + range;
+                result = connection.createStatement().executeQuery(query);
+                while (result.next()) {
+                    World target = new World(result.getInt("toWorld"));
+                    if (target.getEmpire() == empire) {
+                        continue;
+                    }
+                    if (target.getPopExponent() == 0) {
+                        // add to colonisable targets
+                        query = "INSERT INTO colonisable (world, empire) VALUES (" + target.getId() + ", " + empire + ")";
+                        connection.createStatement().executeUpdate(query);
+                    } else if (!relations.contains(empire + "-" + target.getEmpire())) {
+                        // add to contacted empires
+                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + target.getId() + ", " + empire + ", 0)";
+                        connection.createStatement().executeUpdate(query);
+
+                        // Insert both sides of the relation
+                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + empire + ", " + target.getId() + ", 0)";
+                        connection.createStatement().executeUpdate(query);
+                        // Add to list of known relations to avoid duplication
+                        relations.add(empire + "-" + target.getEmpire());
+                        relations.add(target.getEmpire() + "-" + empire);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 }
