@@ -3,6 +3,9 @@ package traveller;
 import db.MySQLLink;
 
 import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+
 import static java.lang.Integer.toHexString;
 
 public class World {
@@ -226,5 +229,19 @@ public class World {
         return atmosphere >= 4 && atmosphere <= 9 &&
                 hydrographics >= 4 && hydrographics <= 8 &&
                 popExponent >= 5 && popExponent <= 7;
+    }
+
+    public static List<World> getAllWorlds() {
+        try {
+            Connection connection = dbLink.getConnection();
+            var result = connection.createStatement().executeQuery("SELECT id FROM worlds");
+            List<World> worlds = new ArrayList<>();
+            while (result.next()) {
+                worlds.add(new World(result.getInt("id")));
+            }
+            return worlds;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

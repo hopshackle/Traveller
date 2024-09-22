@@ -3,21 +3,17 @@ package traveller;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.*;
 
 public class MainProcess {
 
-    public static void main(String[] args) {
-        // run the process for 10 years
-        for (int i = 0; i < 25; i++) {
-            oneYear();
-        }
-    }
+    static int year = 0;
 
-    public final static void oneYear() {
+    public static void main(String[] args) {
+        int timeToRun = 10;
 
         // first get the current year
         Connection connection = World.dbLink.getConnection();
-        int year;
         try {
             var result = connection.createStatement().executeQuery("SELECT MAX(year) FROM global");
             year = result.next() ? result.getInt(1) + 1 : 0;
@@ -26,12 +22,20 @@ public class MainProcess {
             throw new RuntimeException(e);
         }
 
-        Economy.calculateBudgets(year);
+        for (int i = 0; i < timeToRun; i++) {
+            oneYear();
+        }
+    }
 
-        Economy.progressDevelopment(year);
+    public final static void oneYear() {
 
-        Economy.developmentOrders(year);
+        // we read in all the worlds between each step
+        Economy.calculateBudgets(year, World.getAllWorlds());
 
-        Economy.endOfYear(year);
+        Economy.progressDevelopment(year, World.getAllWorlds());
+
+        Economy.endOfYear(year, World.getAllWorlds());
+
+        year++;
     }
 }
