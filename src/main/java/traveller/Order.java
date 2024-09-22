@@ -7,7 +7,7 @@ public class Order {
 
 
     public enum OrderType {
-        STARPORT, RESEARCH, INFRASTRUCTURE, UPLIFT, COLONISE, ATTACK
+        STARPORT, RESEARCH, INFRASTRUCTURE, UPLIFT, COLONISE_LOW, COLONISE_MID, COLONISE_HIGH, ATTACK
     }
 
     int id = -1;

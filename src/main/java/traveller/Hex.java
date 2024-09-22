@@ -14,7 +14,14 @@ public class Hex {
      * Get distance between two hexes
      */
     public int distance(Hex other) {
-        return (Math.abs(x - other.x) + Math.abs(y - other.y) + Math.abs(x + y - other.x - other.y)) / 2;
+        Hex a = evenqToAxial();
+        Hex b = other.evenqToAxial();
+        return (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.x + a.y - b.x - b.y)) / 2;
+    }
+
+    private Hex evenqToAxial() {
+        int r = y - (x + (x&1)) / 2;
+        return new Hex(x, r);
     }
 
     @Override

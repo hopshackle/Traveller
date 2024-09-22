@@ -64,6 +64,7 @@ public class Economy {
                 boolean starportInProgress = world.techLevel < 7; // can't build starport without spacefaring tech
                 boolean infraInProgress = world.techLevel <= world.infrastructure;  // tech is limit on infra
                 boolean techInProgress = false;
+                boolean colonisationInProgress = !(world.techLevel > 8 && world.starportRank > 2 && world.popExponent > 5);
                 while (orders.next()) {
                     Order order = new Order(orders.getInt("id"));
                     if (order.type == Order.OrderType.STARPORT) {
@@ -72,6 +73,8 @@ public class Economy {
                         infraInProgress = true;
                     } else if (order.type == Order.OrderType.RESEARCH) {
                         techInProgress = true;
+                    } else if (order.type == Order.OrderType.COLONISE_LOW || order.type == Order.OrderType.COLONISE_MID || order.type == Order.OrderType.COLONISE_HIGH) {
+                        colonisationInProgress = true;
                     }
                 }
 
@@ -110,6 +113,24 @@ public class Economy {
                     } else if (world.starport.equals("B") && budget >= 160) {
                         order = new Order(Order.OrderType.STARPORT, world.id, -1, year, year + 30, 2400);
                         order.description = "Upgrade Starport to A";
+                    }
+                } else if (!colonisationInProgress) {
+                    // we can colonise a world if there is one within range
+                    int colonisationRange = world.techLevel - 9;
+                    if (world.techLevel == 9) colonisationRange = 1;
+                    var result2 = connection.createStatement().executeQuery("SELECT * FROM worlds, links" +
+                            " WHERE Population = 0 AND " +
+                            "worlds.id = links.toWorld AND links.fromWorld = " + world.id + " AND " +
+                            "distance <= " + colonisationRange);
+                    if (result2.next()) {
+                        if (budget < 20) {
+                            order = new Order(Order.OrderType.COLONISE_LOW, world.id, result2.getInt("id"), year, year + 1, 2);
+                        } else if (budget < 200) {
+                            order = new Order(Order.OrderType.COLONISE_MID, world.id, result2.getInt("id"), year, year + 1, 20);
+                        } else {
+                            order = new Order(Order.OrderType.COLONISE_HIGH, world.id, result2.getInt("id"), year, year + 1, 200);
+                        }
+                        order.description = "Colonise " + result2.getString("Name");
                     }
                 }
                 if (order != null)
@@ -158,6 +179,29 @@ public class Economy {
                     } else if (order.type == Order.OrderType.RESEARCH) {
                         world.techLevel++;
                         if (debug) logMessage(year, world, "Tech level increased to " + world.techLevel);
+                    } else if (order.type == Order.OrderType.COLONISE_LOW || order.type == Order.OrderType.COLONISE_MID || order.type == Order.OrderType.COLONISE_HIGH) {
+                        World target = new World(order.targetId);
+                        target.popMantissa = 1;
+                        target.popExponent = switch (order.type) {
+                            case COLONISE_LOW -> 3;
+                            case COLONISE_MID -> 4;
+                            case COLONISE_HIGH -> 5;
+                            default -> throw new RuntimeException("Invalid colonisation order");
+                        };
+                        target.techLevel = world.techLevel - 2;
+                        target.infrastructure = switch (order.type) {
+                            case COLONISE_LOW -> 1;
+                            case COLONISE_MID -> 2;
+                            case COLONISE_HIGH -> 3;
+                            default -> throw new RuntimeException("Invalid colonisation order");
+                        };
+                        target.culture = world.culture;
+                        target.starport = order.type == Order.OrderType.COLONISE_LOW ? "E" : "D";
+                        target.empire = world.empire;
+                        target.write();
+                        world.changePopulation(-Math.pow(10, target.popExponent) * target.popMantissa);
+                        world.write();
+                        if (debug) logMessage(year, world, "Colonisation of " + target.name + " complete");
                     }
                     order.status = Constants.Status.COMPLETED;
                     order.write();

@@ -13,8 +13,10 @@ public class World {
     String sector;
     int size, popExponent, atmosphere, hydrographics, techLevel, infrastructure, baseResources, culture, preTech;
     int gasGiantCount, beltCount;
+    int empire;
     double popMantissa, treasury, gwp;
     String starport;
+    int starportRank;
     static MySQLLink dbLink = new MySQLLink();
 
     public World(String name, int x, int y, String sector) {
@@ -43,6 +45,12 @@ public class World {
         if (hydrographics == 0 || hydrographics == 10)
             resources -= 1;
         return resources;
+    }
+
+    public void changePopulation(double change) {
+        double totalPop = popMantissa * Math.pow(10, popExponent) + change;
+        popExponent = (int) Math.log10(totalPop);
+        popMantissa = totalPop / Math.pow(10, popExponent);
     }
 
     public int getId() {
@@ -76,6 +84,14 @@ public class World {
             this.location = new Hex(result.getInt("x"), result.getInt("y"));
             this.sector = result.getString("Sector");
             this.starport = result.getString("Starport");
+            this.starportRank = switch (starport) {
+                case "A" -> 5;
+                case "B" -> 4;
+                case "C" -> 3;
+                case "D" -> 2;
+                case "E" -> 1;
+                default -> 0;
+            };
             this.size = result.getInt("Size");
             this.atmosphere = result.getInt("Atmosphere");
             this.hydrographics = result.getInt("Hydrographics");
@@ -90,6 +106,7 @@ public class World {
             this.beltCount = result.getInt("Belts");
             this.treasury = result.getDouble("Treasury");
             this.gwp = result.getDouble("GWP");
+            this.empire = result.getInt("Empire");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -123,7 +140,8 @@ public class World {
                     "GasGiants INT NOT NULL," +
                     "Belts INT NOT NULL," +
                     "Treasury DOUBLE NOT NULL, " +
-                    "GWP DOUBLE NOT NULL";
+                    "GWP DOUBLE NOT NULL, " +
+                    "Empire INT NOT NULL";
 
             connection.createStatement().executeUpdate(update);
         } catch (Exception e) {
@@ -145,11 +163,11 @@ public class World {
 
                 // write the world data
                 update = "INSERT INTO worlds (id, Starport, Size, Atmosphere, Hydrographics, Population, Tech, " +
-                        "PopDigit, Infrastructure, BaseResources, Culture, PreTech, GasGiants, Belts, Treasury, GWP) " +
+                        "PopDigit, Infrastructure, BaseResources, Culture, PreTech, GasGiants, Belts, Treasury, GWP, Empire) " +
                         "VALUES (" + id + ", '" + starport + "', " + size + ", " + atmosphere + ", " +
                         hydrographics + ", " + popExponent + ", " + techLevel + ", " + popMantissa + ", " +
                         infrastructure + ", " + baseResources + ", " + culture + ", " + preTech + ", " +
-                        gasGiantCount + ", " + beltCount + "," + treasury + "," + gwp + ")";
+                        gasGiantCount + ", " + beltCount + "," + treasury + "," + gwp + ", " + empire + ")";
                 connection.createStatement().executeUpdate(update);
             } else {  // need to update
                 String update = "UPDATE worlds SET " +
@@ -167,7 +185,8 @@ public class World {
                         "GasGiants = " + gasGiantCount + ", " +
                         "Belts = " + beltCount + ", " +
                         "Treasury = " + treasury + ", " +
-                        "GWP = " + gwp + " " +
+                        "GWP = " + gwp + ", " +
+                        "Empire = " + empire + " " +
                         "WHERE id = " + id;
                 connection.createStatement().executeUpdate(update);
             }
