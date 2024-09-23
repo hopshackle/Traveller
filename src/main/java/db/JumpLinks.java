@@ -107,7 +107,12 @@ public class JumpLinks {
                         continue;
                     }
                     if (target.getPopExponent() == 0) {
-                        // add to colonisable targets
+                        // add to colonisable targets if not already there
+                        query = "SELECT * FROM colonisable WHERE world = " + target.getId() + " AND empire = " + empire;
+                        ResultSet colonisable = connection.createStatement().executeQuery(query);
+                        if (colonisable.next()) {
+                            continue;
+                        }
                         query = "INSERT INTO colonisable (world, empire) VALUES (" + target.getId() + ", " + empire + ")";
                         connection.createStatement().executeUpdate(query);
                     } else if (!relations.contains(empire + "-" + target.getEmpire())) {

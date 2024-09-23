@@ -3,6 +3,7 @@ package traveller;
 import db.MySQLLink;
 
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.*;
 
 import static traveller.Constants.Status.IN_PROGRESS;
@@ -151,28 +152,33 @@ public class Economy {
                 }
             } else if (!colonisationInProgress) {
                 // we can colonise a world if there is one within range
-                int colonisationRange = world.techLevel - 9;
-                if (world.techLevel == 9) colonisationRange = 1;
-                var result2 = connection.createStatement().executeQuery("SELECT * FROM worlds, links" +
-                        " WHERE Population = 0 AND " +
-                        "worlds.id = links.toWorld AND links.fromWorld = " + world.id + " AND " +
-                        "distance <= " + colonisationRange);
-                if (result2.next()) {
-                    if (budget < 10) {
-                        order = new Order(Order.OrderType.COLONISE_LOW, world.id, result2.getInt("id"), year, 1, 2);
-                    } else if (budget < 100) {
-                        order = new Order(Order.OrderType.COLONISE_MID, world.id, result2.getInt("id"), year, 2, 20);
+                // to account for the ability to colonise via other worlds, we batch process and the
+                // results are held in the colonisable table (updated at the end of the year)
+                var result2 = connection.createStatement().executeQuery("SELECT * FROM colonisable " +
+                        "WHERE empire =  " + world.empire);
+                boolean colonisationTargetFound = false;
+                while (result2.next() && !colonisationTargetFound) {
+                    World target = new World(result2.getInt("world"));
+                    if (target.popExponent == 0) { // we check this in case the target has been colonised in the meantime
+                        colonisationTargetFound = true;
                     } else {
-                        order = new Order(Order.OrderType.COLONISE_HIGH, world.id, result2.getInt("id"), year, 3, 200);
+                        continue; // try next one
                     }
-                    order.description = "Colonise " + result2.getString("Name");
+                    if (budget < 10) {
+                        order = new Order(Order.OrderType.COLONISE_LOW, world.id, target.id, year, 1, 2);
+                    } else if (budget < 100) {
+                        order = new Order(Order.OrderType.COLONISE_MID, world.id, target.id, year, 2, 20);
+                    } else {
+                        order = new Order(Order.OrderType.COLONISE_HIGH, world.id, target.id, year, 3, 200);
+                    }
+                    order.description = "Colonise " + target.name;
 
                     // and we update the population on the target world to stop a second attempt while this one is in progress
-                    World target = new World(order.targetId);
                     target.popMantissa = 1;
                     target.popExponent = 1;
                     target.write();
                 }
+                result2.close();
             }
             if (order != null)
                 order.write();
@@ -185,7 +191,13 @@ public class Economy {
 
     static void logMessage(int year, World w, String message) {
         System.out.printf("%3d%20s%45s%n", year, w.name, message);
+        try(Statement stmt = dbLink.getConnection().createStatement()) {
+            stmt.executeUpdate("INSERT INTO messages (year, world, message) VALUES (" + year + ", " + w.id + ", '" + message + "')");
+        } catch (Exception e) {
+            throw new RuntimeException(message);
+        }
     }
+
 
     public static void endOfYear(int year, List<World> worlds) {
         // we run through all worlds and update their treasury
