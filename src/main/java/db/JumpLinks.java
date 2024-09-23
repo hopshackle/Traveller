@@ -13,6 +13,8 @@ public class JumpLinks {
     // we read in the worlds table, and then create a list of links between them
     // which is written to the database
 
+    static int STARTING_LEVEL = 7;
+
     public static void main(String[] args) {
         // get a connection
         MySQLLink dbLink = new MySQLLink();
@@ -117,11 +119,11 @@ public class JumpLinks {
                         connection.createStatement().executeUpdate(query);
                     } else if (!relations.contains(empire + "-" + target.getEmpire())) {
                         // add to contacted empires
-                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + target.getId() + ", " + empire + ", 0)";
+                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + target.getId() + ", " + empire + ", " + STARTING_LEVEL + " )";
                         connection.createStatement().executeUpdate(query);
 
                         // Insert both sides of the relation
-                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + empire + ", " + target.getId() + ", 0)";
+                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + empire + ", " + target.getId() + ", " + STARTING_LEVEL + " )";
                         connection.createStatement().executeUpdate(query);
                         // Add to list of known relations to avoid duplication
                         relations.add(empire + "-" + target.getEmpire());

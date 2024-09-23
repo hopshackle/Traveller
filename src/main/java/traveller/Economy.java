@@ -3,6 +3,7 @@ package traveller;
 import db.MySQLLink;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.*;
 
@@ -191,7 +192,7 @@ public class Economy {
 
     static void logMessage(int year, World w, String message) {
         System.out.printf("%3d%20s%45s%n", year, w.name, message);
-        try(Statement stmt = dbLink.getConnection().createStatement()) {
+        try (Statement stmt = dbLink.getConnection().createStatement()) {
             stmt.executeUpdate("INSERT INTO messages (year, world, message) VALUES (" + year + ", " + w.id + ", '" + message + "')");
         } catch (Exception e) {
             throw new RuntimeException(message);
@@ -221,8 +222,51 @@ public class Economy {
             world.write();
         }
 
-        // then update the global year
         Connection connection = dbLink.getConnection();
+        // Then we do Empire maintenance
+        // Run through all Empires and update their number of worlds and trade value
+        try (Statement result = connection.createStatement()) {
+            ResultSet rs = result.executeQuery("SELECT * FROM empires WHERE Collapsed = -1");
+            while (rs.next()) {
+                int empire = rs.getInt("id");
+                String sqlQuery = "SELECT * FROM worlds WHERE Empire = " + empire;
+                ResultSet rs2 = connection.createStatement().executeQuery(sqlQuery);
+                int empireSize = rs2.getFetchSize();
+                double tradeValue = 0.0;
+                while (rs2.next()) {
+                    World w = new World(rs2.getInt("id"));
+                    tradeValue += w.starportRank;
+                }
+                rs2.close();
+
+                connection.createStatement().executeUpdate("UPDATE empires SET worlds = " + empireSize +
+                        ", tradeValue = " + tradeValue +
+                        " WHERE id = " + empire);
+            }
+            rs.close();
+
+            // Now we get all Empires with which we have trading relations
+            // We first extract information for all Empires for the sum of the tradeValue of other
+            // Empires with which we have trading relations
+            String sqlQuery = "SELECT Empire1, SUM(tradeValue) AS tradeValue FROM relations " +
+                    "JOIN empires ON Empire2 = empires.id " +
+                    "WHERE relations.Value > 6 " +
+                    "GROUP BY Empire1";
+            rs = connection.createStatement().executeQuery(sqlQuery);
+            while (rs.next()) {
+                int empire = rs.getInt("Empire1");
+                double tradeValue = rs.getDouble("tradeValue");
+                connection.createStatement().executeUpdate("UPDATE empires SET tradeAccess = " + tradeValue +
+                        " WHERE id = " + empire);
+            }
+
+            rs.close();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // then update the global year
+
         try {
             connection.createStatement().executeUpdate("INSERT INTO global (year) VALUES (" + year + ")");
         } catch (Exception e) {

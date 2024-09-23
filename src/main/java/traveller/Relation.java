@@ -9,13 +9,18 @@ public class Relation {
     int value;
     int id = -1;
 
+    public Relation(World one, World two, int value) {
+        this.one = one;
+        this.two = two;
+        this.value = value;
+    }
+
     public Relation(int id) {
         // pull in from database
         Connection connection = World.dbLink.getConnection();
         try {
             var result = connection.createStatement().executeQuery("SELECT * FROM relations WHERE id = " + id);
             if (result.next()) {
-                id = result.getInt("id");
                 one = new World(result.getInt("Empire1"));
                 two = new World(result.getInt("Empire2"));
                 value = result.getInt("Value");
