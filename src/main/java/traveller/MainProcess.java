@@ -12,7 +12,7 @@ public class MainProcess {
     static int year = 0;
 
     public static void main(String[] args) {
-        int timeToRun = 10;
+        int timeToRun = 2;
 
         // first get the current year
         Connection connection = World.dbLink.getConnection();

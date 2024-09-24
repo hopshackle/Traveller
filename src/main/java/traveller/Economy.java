@@ -29,7 +29,13 @@ public class Economy {
 
             double gwp = resources * 0.1 * infrastructure * world.techLevel * world.popMantissa * Math.pow(10, world.popExponent - 6) / (world.culture + 1);
 
-            world.gwp = gwp;
+            // then trade modifier
+            Empire empire = new Empire(world.empire);
+            double tradeAccess = empire.tradeAccess + empire.tradeValue - world.starportRank;
+            double tradeModifier = Math.pow(world.starportRank, 2.5) / 100.0 * (1 - 1 / Math.sqrt(5 * Math.pow(6.0/world.starportRank, 5)  + tradeAccess));
+
+            if (tradeModifier < 1.0) tradeModifier = 1.0;
+            world.gwp = gwp * tradeModifier;
 
             double expenses = (world.culture * 2 + world.infrastructure) * 0.01 * gwp * 0.4;
 
@@ -231,9 +237,10 @@ public class Economy {
                 int empire = rs.getInt("id");
                 String sqlQuery = "SELECT * FROM worlds WHERE Empire = " + empire;
                 ResultSet rs2 = connection.createStatement().executeQuery(sqlQuery);
-                int empireSize = rs2.getFetchSize();
                 double tradeValue = 0.0;
+                int empireSize = 0;
                 while (rs2.next()) {
+                    empireSize++;
                     World w = new World(rs2.getInt("id"));
                     tradeValue += w.starportRank;
                 }
