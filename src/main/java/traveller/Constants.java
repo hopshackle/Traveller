@@ -6,5 +6,6 @@ public class Constants {
         IN_PROGRESS, COMPLETED, FAILED
     }
 
+    public static final double costPerMilitaryUnit = 500;
 
 }

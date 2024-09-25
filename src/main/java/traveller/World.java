@@ -20,7 +20,6 @@ public class World {
     int hydrographics;
     int techLevel;
 
-
     int infrastructure;
     int baseResources;
     int culture;
@@ -30,6 +29,8 @@ public class World {
     double popMantissa, treasury, gwp;
     String starport;
     int starportRank;
+    int military;
+
     static MySQLLink dbLink = new MySQLLink();
 
     public World(String name, int x, int y, String sector) {
@@ -120,6 +121,7 @@ public class World {
             this.treasury = result.getDouble("Treasury");
             this.gwp = result.getDouble("GWP");
             this.empire = result.getInt("Empire");
+            this.military = result.getInt("Military");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -154,7 +156,8 @@ public class World {
                     "Belts INT NOT NULL," +
                     "Treasury DOUBLE NOT NULL, " +
                     "GWP DOUBLE NOT NULL, " +
-                    "Empire INT NOT NULL";
+                    "Empire INT NOT NULL, " +
+                    "Military INT NOT NULL";
 
             connection.createStatement().executeUpdate(update);
         } catch (Exception e) {
@@ -176,11 +179,12 @@ public class World {
 
                 // write the world data
                 update = "INSERT INTO worlds (id, Starport, Size, Atmosphere, Hydrographics, Population, Tech, " +
-                        "PopDigit, Infrastructure, BaseResources, Culture, PreTech, GasGiants, Belts, Treasury, GWP, Empire) " +
+                        "PopDigit, Infrastructure, BaseResources, Culture, PreTech, GasGiants, Belts, Treasury, GWP, " +
+                        " Empire, Military) " +
                         "VALUES (" + id + ", '" + starport + "', " + size + ", " + atmosphere + ", " +
                         hydrographics + ", " + popExponent + ", " + techLevel + ", " + popMantissa + ", " +
                         infrastructure + ", " + baseResources + ", " + culture + ", " + preTech + ", " +
-                        gasGiantCount + ", " + beltCount + "," + treasury + "," + gwp + ", " + empire + ")";
+                        gasGiantCount + ", " + beltCount + "," + treasury + "," + gwp + ", " + empire + ", " + military + ")";
                 connection.createStatement().executeUpdate(update);
             } else {  // need to update
                 String update = "UPDATE worlds SET " +
@@ -199,7 +203,8 @@ public class World {
                         "Belts = " + beltCount + ", " +
                         "Treasury = " + treasury + ", " +
                         "GWP = " + gwp + ", " +
-                        "Empire = " + empire + " " +
+                        "Empire = " + empire + ", " +
+                        "Military = " + military + " " +
                         "WHERE id = " + id;
                 connection.createStatement().executeUpdate(update);
             }

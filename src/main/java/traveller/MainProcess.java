@@ -3,16 +3,14 @@ package traveller;
 import db.JumpLinks;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
 
 public class MainProcess {
 
     static int year = 0;
 
     public static void main(String[] args) {
-        int timeToRun = 2;
+        int timeToRun = 10;
 
         // first get the current year
         Connection connection = World.dbLink.getConnection();

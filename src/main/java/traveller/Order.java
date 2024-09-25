@@ -7,7 +7,7 @@ public class Order {
 
 
     public enum OrderType {
-        STARPORT, RESEARCH, INFRASTRUCTURE, UPLIFT, COLONISE_LOW, COLONISE_MID, COLONISE_HIGH, ATTACK
+        STARPORT, RESEARCH, INFRASTRUCTURE, UPLIFT, COLONISE_LOW, COLONISE_MID, COLONISE_HIGH, ATTACK, MILITARY
     }
 
     int id = -1;
@@ -88,6 +88,11 @@ public class Order {
                 target.write();
                 world.changePopulation(-Math.pow(10, target.popExponent) * target.popMantissa);
                 return "Colonisation of " + target.name + " complete";
+            }
+            case MILITARY -> {
+                int units = (int) Math.floor(totalCost / Constants.costPerMilitaryUnit);
+                world.military += units;
+                return String.format("Military units increased by %d to %d", units, world.military);
             }
             default -> throw new RuntimeException("Order type not implemented");
         }

@@ -8,6 +8,7 @@ import java.sql.Statement;
 import java.util.*;
 
 import static traveller.Constants.Status.IN_PROGRESS;
+import static traveller.Constants.costPerMilitaryUnit;
 
 public class Economy {
 
@@ -27,7 +28,7 @@ public class Economy {
             double infrastructure = world.infrastructure;
             if (infrastructure < 1) infrastructure = 1.0 / (infrastructure + 2);
 
-            double gwp = resources * 0.1 * infrastructure * world.techLevel * world.popMantissa * Math.pow(10, world.popExponent - 6) / (world.culture + 1);
+            double gwp = resources * 0.1 * infrastructure * world.techLevel * world.popMantissa * Math.pow(10, world.popExponent - 8) / (world.culture + 1);
 
             // then trade modifier
             Empire empire = new Empire(world.empire);
@@ -124,7 +125,11 @@ public class Economy {
             }
 
             int infraTime = 2 * (world.size + atmosphericModifier(world.atmosphere));
-            double infraCost = infraTime * (world.infrastructure + 1) * 0.1 * world.popExponent;
+            double infraCost = infraTime * (world.infrastructure + 1) * 0.1 * Math.sqrt(world.popMantissa * Math.pow(10, world.popExponent - 6));
+            // This should really be related to the population in some way, not just the size of the world
+            // if we assume that this base is for a world with about 1 million people, then we can scale it
+            // but we do so as the square root of the population, as the infrastructure is not linearly related
+            // denser population density makes it relatively cheaper
 
             Order order = null;
             if (!starportInProgress && world.starport.equals("X")) {
@@ -186,6 +191,18 @@ public class Economy {
                     target.write();
                 }
                 result2.close();
+            } else {
+                // we consider building a military force
+                // we're going for a constant RU of 500 per military unit
+                int maxUnitsPerYear = world.techLevel + Math.min(world.infrastructure, world.getAvailableResources());
+                double possibleUnits = budget / 500;
+                if (possibleUnits < 1.0) {
+                    order = new Order(Order.OrderType.MILITARY, world.id, -1, year, 1, costPerMilitaryUnit);
+                } else {
+                    int unitsToBuild = (int) Math.min(possibleUnits, maxUnitsPerYear);
+                    order = new Order(Order.OrderType.MILITARY, world.id, -1, year, 1, costPerMilitaryUnit * unitsToBuild);
+                }
+                order.description = String.format("Build %d military units", (int) (order.totalCost / costPerMilitaryUnit));
             }
             if (order != null)
                 order.write();
