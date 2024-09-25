@@ -9,6 +9,7 @@ import java.util.*;
 
 import static traveller.Constants.Status.IN_PROGRESS;
 import static traveller.Constants.costPerMilitaryUnit;
+import static traveller.Constants.maintenancePerMilitaryUnit;
 
 public class Economy {
 
@@ -39,8 +40,9 @@ public class Economy {
             world.gwp = gwp * tradeModifier;
 
             double expenses = (world.culture * 2 + world.infrastructure) * 0.01 * gwp * 0.4;
+            double militaryMaintenance = world.military * maintenancePerMilitaryUnit;
 
-            world.treasury += gwp * 0.4 - expenses;
+            world.treasury += gwp * 0.4 - expenses - militaryMaintenance;
 
             // then population increases by 1% per year (to be changed later)
             world.popMantissa *= 1.01;
@@ -74,12 +76,13 @@ public class Economy {
                     double maxSpendPerYear = order.totalCost / order.minDuration;
                     maxSpend += maxSpendPerYear;
                 }
-                double fraction = Math.min(1.0, budget / maxSpend);
+                double fraction = budget / maxSpend;
+                double evenSplit = budget / orderList.size();
 
                 // loop through orders and spend the available money
                 for (Order order : orderList) {
                     double maxSpendPerYear = order.totalCost / order.minDuration;
-                    double spend = Math.min(maxSpendPerYear, order.totalCost / order.minDuration * fraction);
+                    double spend = fraction >= 1.0 ? maxSpendPerYear : Math.min(maxSpendPerYear, evenSplit);
                     order.remainingCost -= spend;
                     world.treasury -= spend;
                     if (order.remainingCost <= 0) {
@@ -109,6 +112,7 @@ public class Economy {
             boolean starportInProgress = world.techLevel < 7; // can't build starport without spacefaring tech
             boolean infraInProgress = world.techLevel <= world.infrastructure;  // tech is limit on infra
             boolean techInProgress = false;
+            boolean militaryUnderConstruction = false;
             boolean colonisationInProgress = !(world.techLevel > 8 && world.starportRank > 2 && world.popExponent > 5);
             // don't replicate an existing project
             for (Order order : currentOrders) {
@@ -121,6 +125,8 @@ public class Economy {
                     techInProgress = true;
                 } else if (order.type == Order.OrderType.COLONISE_LOW || order.type == Order.OrderType.COLONISE_MID || order.type == Order.OrderType.COLONISE_HIGH) {
                     colonisationInProgress = true;
+                } else if (order.type == Order.OrderType.MILITARY) {
+                    militaryUnderConstruction = true;
                 }
             }
 
@@ -191,7 +197,7 @@ public class Economy {
                     target.write();
                 }
                 result2.close();
-            } else {
+            } else if (!militaryUnderConstruction) {
                 // we consider building a military force
                 // we're going for a constant RU of 500 per military unit
                 int maxUnitsPerYear = world.techLevel + Math.min(world.infrastructure, world.getAvailableResources());
@@ -237,9 +243,16 @@ public class Economy {
                 if (world.treasury < -5 * world.gwp) {
                     // let's call this bankruptcy
                     world.treasury = 0.0;
-                    if (world.infrastructure > 0)
-                        world.infrastructure--;
-                    if (debug) logMessage(year, world, "Bankruptcy! Infrastructure reduced by 1");
+                    world.military = Math.max(0, world.military - 1);
+                    world.infrastructure = Math.max(0, world.infrastructure - 1);
+                    if (debug) logMessage(year, world, "Bankruptcy! Infrastructure and Military reduced by 1");
+                    // we also cancel any Infrastructure or Military orders
+                    try (Statement stmt = dbLink.getConnection().createStatement()) {
+                        stmt.executeUpdate("UPDATE orders SET Status = 'FAILED' WHERE World = " + world.id +
+                                " AND (Type = 'INFRASTRUCTURE' OR Type = 'MILITARY') AND Status = 'IN_PROGRESS'");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
             world.write();

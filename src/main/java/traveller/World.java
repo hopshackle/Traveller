@@ -168,26 +168,27 @@ public class World {
     public int write() {
         // get a connection, and write the system to the database
         Connection connection = dbLink.getConnection();
+        String query = "";
         try {
             if (id == -1) { // need to insert
-                String update = "INSERT INTO systems (name, x, y, sector) " +
+                query = "INSERT INTO systems (name, x, y, sector) " +
                         "VALUES ('" + name + "'," + location.x + "," + location.y + ", '" + sector + "')";
-                connection.createStatement().executeUpdate(update);
+                connection.createStatement().executeUpdate(query);
                 var result = connection.createStatement().executeQuery("SELECT LAST_INSERT_ID()");
                 result.next();
                 id = result.getInt(1);
 
                 // write the world data
-                update = "INSERT INTO worlds (id, Starport, Size, Atmosphere, Hydrographics, Population, Tech, " +
+                query = "INSERT INTO worlds (id, Starport, Size, Atmosphere, Hydrographics, Population, Tech, " +
                         "PopDigit, Infrastructure, BaseResources, Culture, PreTech, GasGiants, Belts, Treasury, GWP, " +
                         " Empire, Military) " +
                         "VALUES (" + id + ", '" + starport + "', " + size + ", " + atmosphere + ", " +
                         hydrographics + ", " + popExponent + ", " + techLevel + ", " + popMantissa + ", " +
                         infrastructure + ", " + baseResources + ", " + culture + ", " + preTech + ", " +
                         gasGiantCount + ", " + beltCount + "," + treasury + "," + gwp + ", " + empire + ", " + military + ")";
-                connection.createStatement().executeUpdate(update);
+                connection.createStatement().executeUpdate(query);
             } else {  // need to update
-                String update = "UPDATE worlds SET " +
+                query = "UPDATE worlds SET " +
                         "Starport = '" + starport + "', " +
                         "Size = " + size + ", " +
                         "Atmosphere = " + atmosphere + ", " +
@@ -206,10 +207,11 @@ public class World {
                         "Empire = " + empire + ", " +
                         "Military = " + military + " " +
                         "WHERE id = " + id;
-                connection.createStatement().executeUpdate(update);
+                connection.createStatement().executeUpdate(query);
             }
             return id;
         } catch (Exception e) {
+            System.out.println(query);
             throw new RuntimeException(e);
         }
     }
