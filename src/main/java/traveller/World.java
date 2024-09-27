@@ -30,6 +30,7 @@ public class World {
     String starport;
     int starportRank;
     int military;
+    int progression, advancement, growth, planning, militancy, unity, tolerance;
 
     static MySQLLink dbLink = new MySQLLink();
 
@@ -115,6 +116,13 @@ public class World {
             this.infrastructure = result.getInt("Infrastructure");
             this.baseResources = result.getInt("BaseResources");
             this.culture = result.getInt("Culture");
+            this.progression = result.getInt("Progression");
+            this.advancement = result.getInt("Advancement");
+            this.growth = result.getInt("Growth");
+            this.planning = result.getInt("Planning");
+            this.militancy = result.getInt("Militancy");
+            this.unity = result.getInt("Unity");
+            this.tolerance = result.getInt("Tolerance");
             this.preTech = result.getInt("PreTech");
             this.gasGiantCount = result.getInt("GasGiants");
             this.beltCount = result.getInt("Belts");
@@ -122,44 +130,6 @@ public class World {
             this.gwp = result.getDouble("GWP");
             this.empire = result.getInt("Empire");
             this.military = result.getInt("Military");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void initialiseTable(boolean drop) {
-        Connection connection = dbLink.getConnection();
-        try {
-            if (drop) {
-                String update = "DROP TABLE IF EXISTS worlds";
-                connection.createStatement().executeUpdate(update);
-            }
-
-            String update = "CREATE TABLE IF NOT EXISTS systems (" +
-                    "id INT AUTO_INCREMENT PRIMARY KEY," +
-                    "Name VARCHAR(45) NOT NULL," +
-                    "x INT NOT NULL," +
-                    "y INT NOT NULL," +
-                    "Sector VARCHAR(45) NOT NULL)" +
-                    "Starport VARCHAR(1) NOT NULL," +
-                    "Size INT NOT NULL," +
-                    "Atmosphere INT NOT NULL," +
-                    "Hydrographics INT NOT NULL," +
-                    "Population INT NOT NULL," +
-                    "Tech INT NOT NULL," +
-                    "PopDigit DOUBLE NOT NULL," +
-                    "Infrastructure INT NOT NULL," +
-                    "BaseResources INT NOT NULL," +
-                    "Culture INT NOT NULL," +
-                    "PreTech INT NOT NULL," +
-                    "GasGiants INT NOT NULL," +
-                    "Belts INT NOT NULL," +
-                    "Treasury DOUBLE NOT NULL, " +
-                    "GWP DOUBLE NOT NULL, " +
-                    "Empire INT NOT NULL, " +
-                    "Military INT NOT NULL";
-
-            connection.createStatement().executeUpdate(update);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -240,6 +210,66 @@ public class World {
                 ". UWP=" + String.format("%s%s%s%s-%s", toHexString(size), toHexString(atmosphere),
                 toHexString(hydrographics), toHexString(popExponent), toHexString(techLevel)) +
                 " }";
+    }
+
+    public String keywordDescription() {
+        // we return a string with 6 components (Progression through Unity)
+        StringBuilder sb = new StringBuilder("Culturally this society is ");
+        sb.append(switch (progression) {
+            case 0, 1, 2, 3 -> "Radical";
+            case 4, 5, 6, 7 -> "Progressive";
+            case 8, 9, 10, 11 -> "Conservative";
+            default -> "Reactionary";
+        });
+        sb.append(", ").append(switch (advancement) {
+            case -3, -2, -1  -> "Mercurial";
+            case 0, 1, 2, 3 -> "Enterprising";
+            case 4, 5, 6, 7 -> "Advancing";
+            case 8, 9, 10, 11 -> "Indifferent";
+            case 12, 13, 14 -> "Stagnant";
+            default -> "Decaying";
+        });
+        sb.append(", ").append(switch (growth) {
+            case -3, -2, -1  -> "Imperialist";
+            case 0, 1, 2, 3 -> "Expansionist";
+            case 4, 5, 6, 7 -> "Competitive";
+            case 8, 9, 10, 11 -> "Stable";
+            case 12, 13, 14 -> "Passive";
+            default -> "Shrinking";
+        });
+        sb.append(", ").append(switch (planning) {
+            case -3, -2, -1  -> "Chaotic";
+            case 0, 1, 2, 3 -> "Short-term thinkers";
+            case 4, 5, 6, 7 -> "Organised";
+            case 8, 9, 10, 11 -> "Strategic";
+            case 12, 13, 14 -> "Long-term thinkers";
+            default -> "Very long-term thinkers";
+        });
+        sb.append(", ").append(switch (militancy) {
+            case -3, -2, -1  -> "Belligerent";
+            case 0, 1, 2, 3 -> "Militant";
+            case 4, 5, 6, 7 -> "Neutral";
+            case 8, 9, 10, 11 -> "Peacable";
+            case 12, 13, 14 -> "Concilatory";
+            default -> "Pacifist";
+        });
+        sb.append(",").append(switch (tolerance) {
+            case -3, -2, -1  -> "Xenophilic";
+            case 0, 1, 2 -> "Tolerant";
+            case 3, 4, 5-> "Friendly";
+            case 6, 7, 8 -> "Neutral";
+            case 9, 10, 11 -> "Aloof";
+            default -> "Xenophobic";
+        });
+        sb.append(", and ").append(switch (unity) {
+            case 1, 2  -> "Monolithic";
+            case 3, 4, 5 -> "Homogeneous";
+            case 6, 7 -> "Harmonious";
+            case 8, 9  -> "Discordant";
+            case 10, 11 -> "Fragmented";
+            default -> "Anarchic";
+        });
+        return sb.toString();
     }
 
     public boolean isAgricultural() {
