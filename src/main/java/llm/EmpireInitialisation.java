@@ -1,12 +1,14 @@
 package llm;
 
 import db.MySQLLink;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServices;
 import traveller.Empire;
 import traveller.World;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 public class EmpireInitialisation {
 
@@ -24,9 +26,11 @@ public class EmpireInitialisation {
             Republic of XXX
             XXX Consulate
             
-            Your job is also to write a 30 word synopsis about the Empire, summarising what is known to the players. 
-            This should have be flavourful and make use of the known cultural traits.\s
+            Your job is also to write a synopsis in 40 words or fewer about the Empire, summarising what is known to the players, and how it interacts with the wider galaxy.
+            This should have be flavourful and make use of the known cultural traits provided.
             Your synopsis should where possible avoid using the keywords in the cultural traits directly.
+            You do not need to use all the keywords, but you should use some of them. The priority is to make the description distinctive, interesting and engaging.
+            Avoid using excessive adjectives. Make each one count.
             
             Here are three examples:
             Planet: Smade's World
@@ -35,17 +39,27 @@ public class EmpireInitialisation {
             Name: Smade's Cladistic Exogeny
             Description: All the population are members of the Smade family, and the different lineal branches compete for political and economic office. Policy implementation is not a strong point, despite lofty goals.
             
+            
             Planet: Prometheus
             Culturally this society is Reactionary, Stagnant, Stable, Organised, Peacable, Fragmented
             
             Name: The Aurelian Dynastic Accord
             Description: The planet’s noble houses cling to ancient traditions and guard their entrenched privileges fiercely. Though politically fractured, they maintain a rigid, unchanging order, with treaties and pacts binding each faction into a delicate equilibrium that has endured for centuries.
             
-            Planet: Dingiir
-            Culturally this society is Progressive, Enterprising, Expansionist, Chaotic, Belligerent, Harmonious
             
-            Name: Dingiir Hegemonic Union
-            Description: A volatile alliance of ambitious power blocs, constantly pushing outward and competing for supremacy. Despite their internal rivalries, they present a unified front to outsiders, driven by a shared vision of dominance and relentless progress.
+            Planet: Dingiir
+            Culturally this society is Progressive, Advancing, Competitive, Strategic, Militant, Neutral, and Harmonious
+            
+            Name: Saeculoris Ascendancy
+            Description: Ruled by meritocrats who ascend through a crucible of rigorous trials, the Saeculoris Ascendancy is a formidable power.
+            Their stellar fleets are masters of calculated, decisive warfare waged beneath a banner of unwavering unity.
+            
+            
+            Planet: Muan Ialour
+            Culturally this society is Conservative, Stagnant, Expansionist, Strategic, Neutral, Neutral, and Monolithic
+            
+            Name: Muan Ialour Protectorates
+            Description: Ruled from the obsidian throne of Muan Ialour, the Protectorates expand slowly outward, incorporating new worlds with patient, deliberate precision, like the growth of a crystal.
             """;
 
     record EmpireDescription(String name, String description) {
@@ -64,25 +78,36 @@ public class EmpireInitialisation {
         LLMAccess llm = new LLMAccess();
 
         // we really need to create an AIService for each of these
-        EmpireNameGenerator openAINamer = AiServices.builder(EmpireNameGenerator.class)
-                .chatLanguageModel(llm.openaiModel)
-                .systemMessageProvider(_ -> systemPrompt)
-                .build();
-        EmpireNameGenerator geminiNamer = AiServices.builder(EmpireNameGenerator.class)
-                .chatLanguageModel(llm.geminiModel)
-                .systemMessageProvider(_ -> systemPrompt)
-                .build();
-        EmpireNameGenerator mistralNamer = AiServices.builder(EmpireNameGenerator.class)
-                .chatLanguageModel(llm.mistralModel)
-                .systemMessageProvider(_ -> systemPrompt)
-                .build();
+        EmpireNameGenerator openAISmall = new EmpireInitialisation().getNamer(llm.openaiSmallModel);
+        EmpireNameGenerator openAILarge = new EmpireInitialisation().getNamer(llm.openaiLargeModel);
+        EmpireNameGenerator geminiSmall = new EmpireInitialisation().getNamer(llm.geminiSmallModel);
+        EmpireNameGenerator geminiLarge = new EmpireInitialisation().getNamer(llm.geminiLargeModel);
+        EmpireNameGenerator mistralSmall = new EmpireInitialisation().getNamer(llm.mistralSmallModel);
+        EmpireNameGenerator mistralLarge = new EmpireInitialisation().getNamer(llm.mistralLargeModel);
 
+        Map<Integer, EmpireNameGenerator> llmNamers = Map.of(
+                0, openAISmall,
+                1, openAILarge,
+                2, geminiSmall,
+                3, geminiLarge,
+                4, mistralSmall,
+                5, mistralLarge
+        );
+        Map<Integer, String> llmNames = Map.of(
+                0, "OpenAI Small",
+                1, "OpenAI Large",
+                2, "Gemini Small",
+                3, "Gemini Large",
+                4, "Mistral Small",
+                5, "Mistral Large"
+        );
 
         int count = 0;
         for (World world : worlds) {
             if (world.getPopExponent() > 0) {
+
                 String userMessage = "Planet: " + world.getName() + "\n" +
-                        world.keywordDescription();
+                        "Culturally this world is " + world.keywordDescription();
 
                 Empire empire = new Empire(world.getEmpire());
                 if (!empire.getName().equals(world.getName())) {
@@ -91,13 +116,15 @@ public class EmpireInitialisation {
                 }
                 System.out.println(userMessage);
                 EmpireDescription empireDescription;
+
+                // we rotate through all models only if we are testing their relative performance
+                EmpireNameGenerator namer = llmNamers.get(count % 6);
+                String llmName = llmNames.get(count % 6);
+
+                namer = geminiSmall;
+                llmName = "Gemini Small";
                 try {
-                    if (count % 3 == 0)
-                        empireDescription = openAINamer.generateName(userMessage);
-                    else if (count % 3 == 1)
-                        empireDescription = mistralNamer.generateName(userMessage);
-                    else
-                        empireDescription = geminiNamer.generateName(userMessage);
+                    empireDescription = namer.generateName(userMessage);
                 } catch (Exception e) {
                     System.out.println("Error generating name: " + e.getMessage());
                     empireDescription = new EmpireDescription("Domain of " + world.getName(), "A powerful empire that controls the planet " + world.getName());
@@ -109,15 +136,33 @@ public class EmpireInitialisation {
                     // which we need to escape
                     String escapedName = empireDescription.name.replace("'", "''");
                     String escapedDescription = empireDescription.description.replace("'", "''");
-                    query = "UPDATE empires SET Name = '" + escapedName + "', Description = '" + escapedDescription + "' WHERE id = " + world.getEmpire();
+                    query = "UPDATE empires SET Name = '" + escapedName + "', Description = '" + escapedDescription +
+                            "', LLM = '" + llmName + "', CulturalTraits = '" + world.keywordDescription() +
+                            "' WHERE id = " + world.getEmpire();
                     connection.createStatement().executeUpdate(query);
                 } catch (SQLException e) {
                     System.out.println("Failed to write: " + query);
                     throw new RuntimeException(e);
                 }
                 count++;
-                if (count > 5) break;
+//                if (count % 6 == 0) {
+//                    // we now pause for one second ... we have 60 RPM for Gemini Pro...so that will ensure safety
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+                //        if (count >= 12)
+                //            return; // for testing
             }
         }
+    }
+
+    private EmpireNameGenerator getNamer(ChatLanguageModel model) {
+        return AiServices.builder(EmpireNameGenerator.class)
+                .chatLanguageModel(model)
+                .systemMessageProvider(_ -> systemPrompt)
+                .build();
     }
 }

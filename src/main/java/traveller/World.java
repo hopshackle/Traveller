@@ -214,7 +214,7 @@ public class World {
 
     public String keywordDescription() {
         // we return a string with 6 components (Progression through Unity)
-        StringBuilder sb = new StringBuilder("Culturally this society is ");
+        StringBuilder sb = new StringBuilder();
         sb.append(switch (progression) {
             case 0, 1, 2, 3 -> "Radical";
             case 4, 5, 6, 7 -> "Progressive";
@@ -224,8 +224,8 @@ public class World {
         sb.append(", ").append(switch (advancement) {
             case -3, -2, -1  -> "Mercurial";
             case 0, 1, 2, 3 -> "Enterprising";
-            case 4, 5, 6, 7 -> "Advancing";
-            case 8, 9, 10, 11 -> "Indifferent";
+            case 4, 5, 6, 7 -> "Balanced";
+            case 8, 9, 10, 11 -> "Careful";
             case 12, 13, 14 -> "Stagnant";
             default -> "Decaying";
         });
@@ -249,16 +249,16 @@ public class World {
             case -3, -2, -1  -> "Belligerent";
             case 0, 1, 2, 3 -> "Militant";
             case 4, 5, 6, 7 -> "Neutral";
-            case 8, 9, 10, 11 -> "Peacable";
-            case 12, 13, 14 -> "Concilatory";
+            case 8, 9, 10, 11 -> "Peaceful";
+            case 12, 13, 14 -> "Conciliatory";
             default -> "Pacifist";
         });
-        sb.append(",").append(switch (tolerance) {
+        sb.append(", ").append(switch (tolerance) {
             case -3, -2, -1  -> "Xenophilic";
-            case 0, 1, 2 -> "Tolerant";
-            case 3, 4, 5-> "Friendly";
-            case 6, 7, 8 -> "Neutral";
-            case 9, 10, 11 -> "Aloof";
+            case 0, 1, 2 -> "Friendly";
+            case 3, 4, 5-> "Open";
+            case 6, 7, 8 -> "Reserved";
+            case 9, 10, 11 -> "Isolationist";
             default -> "Xenophobic";
         });
         sb.append(", and ").append(switch (unity) {
