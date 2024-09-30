@@ -110,7 +110,7 @@ public class EmpireInitialisation {
                         "Culturally this world is " + world.keywordDescription();
 
                 Empire empire = new Empire(world.getEmpire());
-                if (!empire.getName().equals(world.getName())) {
+                if (!empire.getName().equals(world.getName()) && empire.getDescription().length() > 70) {
                     System.out.println("Empire already named: " + empire.getName());
                     continue;
                 }
@@ -127,7 +127,7 @@ public class EmpireInitialisation {
                     empireDescription = namer.generateName(userMessage);
                 } catch (Exception e) {
                     System.out.println("Error generating name: " + e.getMessage());
-                    empireDescription = new EmpireDescription("Domain of " + world.getName(), "A powerful empire that controls the planet " + world.getName());
+                    empireDescription = new EmpireDescription(world.getName(), "");
                 }
                 String query = "";
                 System.out.println(empireDescription);
