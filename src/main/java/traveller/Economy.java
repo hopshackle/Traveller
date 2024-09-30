@@ -194,6 +194,7 @@ public class Economy {
                     // and we update the population on the target world to stop a second attempt while this one is in progress
                     target.popMantissa = 1;
                     target.popExponent = 1;
+                    target.empire = world.empire;
                     target.write();
                 }
                 result2.close();
@@ -219,10 +220,11 @@ public class Economy {
         }
     }
 
-    static void logMessage(int year, World w, String message) {
-        System.out.printf("%3d%20s%45s%n", year, w.name, message);
+    public static void logMessage(int year, World w, String message) {
+        System.out.printf("%3d%20s %50s%n", year, w.name, message);
         try (Statement stmt = dbLink.getConnection().createStatement()) {
-            stmt.executeUpdate("INSERT INTO messages (year, world, message) VALUES (" + year + ", " + w.id + ", '" + message + "')");
+            // Replace ' with '' to escape it
+            stmt.executeUpdate("INSERT INTO messages (year, world, message) VALUES (" + year + ", " + w.id + ", '" + message.replace("'", "''") + "')");
         } catch (Exception e) {
             throw new RuntimeException(message);
         }

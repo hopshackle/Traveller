@@ -272,6 +272,17 @@ public class World {
         return sb.toString();
     }
 
+    public int culturalDistanceTo(World other) {
+        return (int) Math.round((Math.abs(progression - other.progression) +
+                        Math.abs(advancement - other.advancement) +
+                        Math.abs(growth - other.growth) +
+                        Math.abs(planning - other.planning) +
+                        Math.abs(militancy - other.militancy) +
+                        Math.abs(unity - other.unity) +
+                        Math.abs(tolerance - other.tolerance) +
+                        Math.abs(culture - other.culture)) / 8.0);
+    }
+
     public boolean isAgricultural() {
         return atmosphere >= 4 && atmosphere <= 9 &&
                 hydrographics >= 4 && hydrographics <= 8 &&

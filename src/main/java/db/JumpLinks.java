@@ -1,5 +1,7 @@
 package db;
 
+import traveller.Economy;
+import traveller.Empire;
 import traveller.Relation;
 import traveller.World;
 
@@ -13,7 +15,8 @@ public class JumpLinks {
     // we read in the worlds table, and then create a list of links between them
     // which is written to the database
 
-    static int STARTING_LEVEL = 7;
+    static int STARTING_LEVEL = 4;
+    static Random rnd = new Random();
 
     public static void main(String[] args) {
         // get a connection
@@ -62,7 +65,7 @@ public class JumpLinks {
         }
     }
 
-    public static void empireRelationsAndTargets() {
+    public static void empireRelationsAndTargets(int year) {
         // We run through all worlds, only worrying about those with a Starport of at least D (or C?)
         // we then check the jump technology of the Empire to which the world belongs, and check all links within range
         // if a world is no populated, then we add it to the list of colonisable targets
@@ -93,7 +96,7 @@ public class JumpLinks {
                     continue;
                 }
                 // get the empire
-                int empire = w.getEmpire();
+                int empireID = w.getEmpire();
                 // get the jump technology
                 int range = w.getTechLevel() - 9;
                 if (range < 1) {
@@ -105,35 +108,51 @@ public class JumpLinks {
                 result = connection.createStatement().executeQuery(query);
                 while (result.next()) {
                     World target = new World(result.getInt("toWorld"));
-                    if (target.getEmpire() == empire) {
+                    if (target.getEmpire() == empireID) {
                         continue;
                     }
+                    int culturalDistance = w.culturalDistanceTo(target);
+                    // we use this as a modifier in some way...but it can be pretty large
+                    // 4 + d6 - culturalDistance
+                    int startingRelationship = STARTING_LEVEL - culturalDistance + rnd.nextInt(6) + 1;
+                    if (startingRelationship < 1) {
+                        startingRelationship = 1;
+                    }
+
                     if (target.getPopExponent() == 0) {
                         // add to colonisable targets if not already there
-                        query = "SELECT * FROM colonisable WHERE world = " + target.getId() + " AND empire = " + empire;
+                        query = "SELECT * FROM colonisable WHERE world = " + target.getId() + " AND empire = " + empireID;
                         ResultSet colonisable = connection.createStatement().executeQuery(query);
                         if (colonisable.next()) {
                             continue;
                         }
-                        query = "INSERT INTO colonisable (world, empire) VALUES (" + target.getId() + ", " + empire + ")";
+                        query = "INSERT INTO colonisable (world, empire) VALUES (" + target.getId() + ", " + empireID + ")";
                         connection.createStatement().executeUpdate(query);
-                    } else if (!relations.contains(empire + "-" + target.getEmpire())) {
+                    } else if (!relations.contains(empireID + "-" + target.getEmpire())) {
                         // add to contacted empires
-                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + target.getId() + ", " + empire + ", " + STARTING_LEVEL + " )";
+                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + target.getId() + ", " + empireID + ", " + startingRelationship + " )";
                         connection.createStatement().executeUpdate(query);
 
                         // Insert both sides of the relation
-                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + empire + ", " + target.getId() + ", " + STARTING_LEVEL + " )";
+                        query = "INSERT INTO relations (Empire1, Empire2, Value) VALUES (" + empireID + ", " + target.getId() + ", " + startingRelationship + " )";
                         connection.createStatement().executeUpdate(query);
                         // Add to list of known relations to avoid duplication
-                        relations.add(empire + "-" + target.getEmpire());
-                        relations.add(target.getEmpire() + "-" + empire);
+                        relations.add(empireID + "-" + target.getEmpire());
+                        relations.add(target.getEmpire() + "-" + empireID);
+
+                        Empire targetEmpire = new Empire(target.getEmpire());
+                        Empire empire = new Empire(empireID);
+                        String relString = Relation.Level.fromInt(startingRelationship).toString();
+                        Economy.logMessage(year, w, ("Makes contact with " + targetEmpire.getName() + " : " + relString).trim());
+                        Economy.logMessage(year, target, "Makes contact with " + empire.getName() + " : " + relString);
                     }
                 }
             }
         } catch (Exception e) {
+            System.out.println(e);
             throw new RuntimeException(e);
         }
 
     }
+
 }

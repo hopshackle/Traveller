@@ -4,7 +4,7 @@ import java.sql.Connection;
 
 public class Relation {
 
-    enum Level {
+    public enum Level {
         AT_WAR(1), COLD_WAR(2), RIVALS(3), NEUTRAL(4), COMMUNICATING(5), CORDIAL(6), TRADE_PARTNERS(7),
         FRIENDLY(8), RESEARCH_PARTNERS(9), DEFENSIVE_ALLIANCE(10), ALLIES(11), FULL_ALLIANCE(12),
         LEGAL_UNION(13), ECONOMIC_UNION(14), FULLY_INTEGRATED(15);

@@ -10,7 +10,7 @@ public class MainProcess {
     static int year = 0;
 
     public static void main(String[] args) {
-        int timeToRun = 50;
+        int timeToRun = 15;
 
         // first get the current year
         Connection connection = World.dbLink.getConnection();
@@ -25,7 +25,7 @@ public class MainProcess {
         for (int i = 0; i < timeToRun; i++) {
             oneYear();
 
-            JumpLinks.empireRelationsAndTargets();
+            JumpLinks.empireRelationsAndTargets(year);
         }
     }
 
