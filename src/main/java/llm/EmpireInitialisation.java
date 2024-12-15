@@ -28,7 +28,7 @@ public class EmpireInitialisation {
             
             Your job is also to write a synopsis in 40 words or fewer about the Empire, summarising what is known to the players, and how it interacts with the wider galaxy.
             This should have be flavourful and make use of the known cultural traits provided.
-            Your synopsis should where possible avoid using the keywords in the cultural traits directly.
+            Your synopsis should avoid using the keywords in the cultural traits directly.
             You do not need to use all the keywords, but you should use some of them. The priority is to make the description distinctive, interesting and engaging.
             Avoid using excessive adjectives. Make each one count.
             

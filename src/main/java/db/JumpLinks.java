@@ -78,8 +78,14 @@ public class JumpLinks {
 
         try{
 
-            // first load in all current relations to avoid duplication
-            String query = "SELECT Empire1, Empire2 FROM relations";
+            // first delete any relations which are no longer valid
+            String query = "DELETE FROM relations WHERE Empire1 NOT IN (SELECT id FROM empires WHERE collapsed = -1)";
+            connection.createStatement().executeUpdate(query);
+            query = "DELETE FROM relations WHERE Empire2 NOT IN (SELECT id FROM empires WHERE collapsed = -1)";
+            connection.createStatement().executeUpdate(query);
+
+            // next load in all current relations to avoid duplication
+            query = "SELECT Empire1, Empire2 FROM relations";
             ResultSet result = connection.createStatement().executeQuery(query);
             Set<String> relations = new HashSet<>();
             while (result.next()) {

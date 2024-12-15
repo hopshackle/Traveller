@@ -7,9 +7,6 @@ import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 
-import java.io.File;
-import java.io.FileWriter;
-
 public class LLMAccess {
 
     public ChatLanguageModel geminiLargeModel, geminiSmallModel;
@@ -21,8 +18,6 @@ public class LLMAccess {
     String openaiToken = System.getenv("OPENAI_TOKEN");
 
     String geminiLocation = "europe-west2";
-
-    LLM_MODEL modelType;
 
     public enum LLM_MODEL {
         GEMINI,

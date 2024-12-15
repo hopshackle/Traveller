@@ -212,6 +212,11 @@ public class World {
                 " }";
     }
 
+    public String getUWP() {
+        return String.format("%S%S%S%S%S-%S", starport, toHexString(size), toHexString(atmosphere),
+                toHexString(hydrographics), toHexString(popExponent), toHexString(techLevel));
+    }
+
     public String keywordDescription() {
         // we return a string with 6 components (Progression through Unity)
         StringBuilder sb = new StringBuilder();
@@ -303,6 +308,20 @@ public class World {
         }
     }
 
+    public List<World> getWorldsWithinJumpRange(int jump) {
+        List<World> worlds = new ArrayList<>();
+        // we check via the links table; not by loading all worlds
+        try {
+            Connection connection = dbLink.getConnection();
+            var result = connection.createStatement().executeQuery("SELECT toWorld FROM links WHERE fromWorld = " + id + " AND distance <= " + jump);
+            while (result.next()) {
+                worlds.add(new World(result.getInt("toWorld")));
+            }
+            return worlds;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public int getSize() {
         return size;
@@ -342,5 +361,62 @@ public class World {
 
     public String getStarport() {
         return starport;
+    }
+
+    public String fullDescription() {
+        StringBuffer sb = new StringBuffer();
+        sb.append(name).append(" (").append(getUWP()).append(")\n");
+        // then location
+        sb.append("Location: ").append(location).append(" in sector ").append(sector).append("\n");
+        // then population
+        sb.append("Population: ").append(populationString()).append("\n");
+        // then tech, infrastructure and Gross Product
+        sb.append("Tech Level: ").append(techLevel).append(", Infrastructure: ").append(infrastructure).append("\n");
+        sb.append("Gas Giants: ").append(gasGiantCount).append(", Belts: ").append(beltCount).append("\n");
+        sb.append("Treasury: ").append(convertToSigFig(treasury, 2)).append("\n");
+        sb.append("Gross World Product: ").append(convertToSigFig(gwp, 2)).append("\n");
+        // then culture
+        sb.append("Culture: ").append(culture).append(" (").append(keywordDescription()).append(")\n");
+        // military presence
+        sb.append("Military: ").append(military).append("\n");
+        // empire
+        if (empire > 0) {
+            sb.append("Empire: ").append(new Empire(empire)).append(" (ID: ").append(empire).append(")\n");
+        } else {
+            sb.append("Independent\n");
+        }
+
+        return sb.toString();
+    }
+    
+    public String convertToSigFig(double value, int significantFigures) {
+        if (value == 0) {
+            return String.format("%.1f", 0.0);
+        }
+        int order = (int) Math.floor(Math.log10(Math.abs(value)));
+        double scale = Math.pow(10, order - (significantFigures - 1));
+        double roundedValue = Math.round(value / scale) * scale;
+        String formatString = "%." + Math.max(0, 1 - order) + "f";
+        return String.format(formatString, roundedValue);
+    }
+
+    public String populationString() {
+        return convertToMillions(popMantissa * Math.pow(10, popExponent));
+    }
+
+    public String convertToMillions(double value) {
+        int order = (int) Math.floor(Math.log10(Math.abs(value)));
+        int div3 = order / 3;
+        String units = switch (div3) {
+            case 0 -> "";
+            case 1 -> "thousand";
+            case 2 -> "million";
+            case 3 -> "billion";
+            case 4 -> "trillion";
+            default -> throw new IllegalArgumentException("Value too large");
+        };
+        double scaledValue = value / Math.pow(10, 3 * div3);
+        String formatString = "%." + (order % 3 == 0 ? "1f" : "0f") + " %s";
+        return String.format(formatString, scaledValue, units);
     }
 }
